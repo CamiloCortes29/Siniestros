@@ -1,5 +1,8 @@
 import pandas as pd
 import re
+import os
+import getpass
+from datetime import datetime
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
@@ -8,7 +11,23 @@ original_txt_file = r'C:\Users\ccortes\UIB COLOMBIA S.A. Corredores de Reaseguro
 
 excel_dest_path = r'C:\Users\ccortes\UIB COLOMBIA S.A. Corredores de Reaseguros\UIB Seguros - Documentos\Camilo\Nueva carpeta\Siniestros\SAP Control de pagos y aprobaciones 2025 - Camilo.xlsx'
 
+print(f"🚀 Iniciando procesamiento...")
+print(f"📂 Archivo origen: {original_txt_file}")
+print(f"📊 Archivo destino: {excel_dest_path}")
+
+# Verificación de existencia de archivos
+if not os.path.exists(original_txt_file):
+    print(f"❌ ERROR: No se encuentra el archivo de origen: {original_txt_file}")
+    input("Presione Enter para salir...")
+    exit()
+
+if not os.path.exists(excel_dest_path):
+    print(f"❌ ERROR: No se encuentra el archivo Excel de destino: {excel_dest_path}")
+    input("Presione Enter para salir...")
+    exit()
+
 # 1. Leer todas las líneas, unificar tabuladores
+print("📖 Leyendo archivo TXT...")
 with open(original_txt_file, 'r', encoding='utf-8') as f:
     raw_lines = f.readlines()
 
@@ -100,14 +119,36 @@ print(f'\n✅ TXT corregido guardado como:\n{final_txt_path}')
 print(f'✅ Excel generado correctamente:\n{xlsx_file_path}')
 
 # 9. Insertar en archivo destino (BASE SAP desde B27)
+print(f"📥 Insertando datos en el Excel de destino: {excel_dest_path}")
 wb = load_workbook(excel_dest_path)
+if 'BASE SAP' not in wb.sheetnames:
+    print(f"⚠️ La hoja 'BASE SAP' no existe. Hojas disponibles: {wb.sheetnames}")
+    input("Presione Enter para salir...")
+    exit()
+
 ws = wb['BASE SAP']
 start_row = 27
 start_col = 2  # B
 
+print(f"📝 Escribiendo {len(df)} filas comenzando en B27...")
 for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=start_row):
     for c_idx, value in enumerate(row, start=start_col):
         ws.cell(row=r_idx, column=c_idx, value=value)
 
+print("💾 Guardando cambios en el archivo Excel...")
 wb.save(excel_dest_path)
 print("✅ Datos pegados exitosamente desde B27 en BASE SAP.")
+
+# 10. Registrar log de actualización
+log_path = os.path.join(os.path.dirname(original_txt_file), "log_actualizacion.txt")
+now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+user = getpass.getuser()
+
+try:
+    with open(log_path, 'w', encoding='utf-8') as log_f:
+        log_f.write(f"Actualizado el: {now} por el usuario: {user}")
+    print(f"✅ Log actualizado en: {log_path}")
+except Exception as e:
+    print(f"⚠️ No se pudo escribir el log: {e}")
+
+input("\nPresione Enter para salir...")
