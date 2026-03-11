@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
@@ -54,11 +55,23 @@ with open(cleaned_txt_file, 'w', encoding='utf-8') as f:
 df = pd.read_csv(cleaned_txt_file, delimiter=';', encoding='utf-8', on_bad_lines='skip', low_memory=False)
 
 # 6. Corregir encabezado mal alineado (columnas 48 a 69)
-if df.columns[48].startswith('Unnamed'):
+if len(df.columns) > 48 and df.columns[48].startswith('Unnamed'):
     print("⚠️ Encabezado mal alineado entre columnas 48 a 69. Realineando...")
+    new_columns = list(df.columns)
     for i in range(48, 69):
-        df.columns.values[i] = df.columns[i + 1]
+        new_columns[i] = df.columns[i + 1]
+    df.columns = new_columns
     df.drop(df.columns[69], axis=1, inplace=True)
+
+# Limpiar caracteres ilegales para Excel (caracteres de control)
+def remove_illegal_chars(val):
+    if isinstance(val, str):
+        # Elimina caracteres de control que rompen openpyxl/Excel
+        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', val)
+    return val
+
+print("🧹 Limpiando caracteres especiales para Excel...")
+df = df.map(remove_illegal_chars)
 
 # 7. Unificar columnas ETAPAS y Observaciones
 if df.shape[1] >= 55:
